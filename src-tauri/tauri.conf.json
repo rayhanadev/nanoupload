@@ -15,11 +15,22 @@
       "shell": {
         "all": false,
         "open": true
+      },
+      "clipboard": {
+        "all": false,
+        "readText": true,
+        "writeText": false
+      },
+      "notification": {
+        "all": true
+      },
+      "globalShortcut": {
+        "all": true
       }
     },
     "windows": [
       {
-        "title": "Settings",
+        "title": "NanoUpload Settings",
         "width": 800,
         "height": 600,
         "titleBarStyle": "Overlay"
@@ -39,6 +50,10 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ]
+    },
+    "systemTray": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
     }
   }
 }
