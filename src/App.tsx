@@ -1,47 +1,29 @@
-import { useEffect, useState } from "react";
-import { listen } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/tauri";
+import { Fragment } from "react";
 
-const App = () => {
-  const [shortcut, setShortcut] = useState("Ctrl+U");
+import "./App.css";
 
-  useEffect(() => {
-    const unlisten = listen("hotkey-pressed", (event) => {
-      const clipboardContent = event.payload as string;
-      handleUpload(clipboardContent);
-    });
-
-    return () => {
-      unlisten.then((fn) => fn());
-    };
-  }, []);
-
-  const handleShortcutChange: React.ChangeEventHandler<
-    HTMLInputElement
-  > = async (event) => {
-    const newShortcut = event.target.value;
-    setShortcut(newShortcut);
-    await invoke("set_shortcut", { new_shortcut: newShortcut });
-  };
-
-  const handleUpload = async (content: string) => {
-    const fileType = content.startsWith("data:image/") ? "image" : "text";
-    await invoke("upload_file", { file_data: content, file_type: fileType });
-    console.log(
-      `${fileType.charAt(0).toUpperCase() + fileType.slice(1)} uploaded`
-    );
-  };
-
+function App() {
   return (
-    <div className="App">
-      <h1>System-wide Hotkey File Upload</h1>
-      <label>
-        Set Hotkey:
-        <input type="text" value={shortcut} onChange={handleShortcutChange} />
-      </label>
-      <p>Press {shortcut} to upload the clipboard content</p>
-    </div>
+    <Fragment>
+      <h1 className="text-2xl font-semibold my-2">
+        NanoUpload <span className="text-gray font-normal">v0.0.0</span>
+      </h1>
+      <p className="text-gray-400">
+        Configure the hotkey used for NanoUpload here.
+      </p>
+
+      <div className="mt-4">
+        <label htmlFor="hotkey" className="block text-gray-600">
+          Hotkey
+        </label>
+        <input
+          type="text"
+          id="hotkey"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+        />
+      </div>
+    </Fragment>
   );
-};
+}
 
 export default App;

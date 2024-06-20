@@ -15,21 +15,14 @@
       "shell": {
         "all": false,
         "open": true
-      },
-      "clipboard": {
-        "all": false,
-        "readText": true,
-        "writeText": false
-      },
-      "globalShortcut": {
-        "all": true
       }
     },
     "windows": [
       {
-        "title": "nanoupload",
+        "title": "Settings",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "titleBarStyle": "Overlay"
       }
     ],
     "security": {
