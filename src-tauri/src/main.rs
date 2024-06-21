@@ -2,12 +2,35 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use arboard::Clipboard;
+use reqwest::Client;
+use serde_json::json;
 use std::path::Path;
+use std::sync::Mutex;
 use tauri::api::notification::Notification;
-use tauri::{ActivationPolicy, AppHandle, CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
-use tauri::{GlobalShortcutManager, WindowEvent};
 use tauri::async_runtime::{self};
+use tauri::{command, State};
+use tauri::{
+    ActivationPolicy, AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu,
+    SystemTrayMenuItem,
+};
+use tauri::{GlobalShortcutManager, WindowEvent};
 use url::Url;
+
+struct AppState {
+    upload_endpoint: Mutex<String>,
+}
+
+#[command]
+fn get_upload_endpoint(state: State<'_, AppState>) -> String {
+    state.upload_endpoint.lock().unwrap().clone()
+}
+
+#[command]
+fn set_upload_endpoint(state: State<'_, AppState>, endpoint: String) {
+    *state.upload_endpoint.lock().unwrap() = endpoint;
+}
+
+const API_ENDPOINT: &str = "http://localhost:60941";
 
 fn main() {
     let about = CustomMenuItem::new("about".to_string(), "About");
@@ -25,12 +48,16 @@ fn main() {
     let system_tray = SystemTray::new().with_menu(tray_menu);
 
     tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            get_upload_endpoint,
+            set_upload_endpoint
+        ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(ActivationPolicy::Accessory);
 
             let (tx, mut rx) = async_runtime::channel::<()>(1);
-            
+
             let handle = app.handle().clone();
 
             async_runtime::spawn(async move {
@@ -62,7 +89,9 @@ fn main() {
                         app,
                         "settings",
                         tauri::WindowUrl::App("index.html".into()),
-                    ).build().unwrap();
+                    )
+                    .build()
+                    .unwrap();
                 }
                 "quit" => {
                     std::process::exit(0);
@@ -84,6 +113,7 @@ fn main() {
 
 async fn handle_clipboard(app: &AppHandle) {
     let mut clipboard = Clipboard::new().unwrap();
+    let client = Client::new();
 
     let clipboard_image_result = clipboard.get_image();
 
@@ -96,11 +126,43 @@ async fn handle_clipboard(app: &AppHandle) {
             let clipboard_text = clipboard_text_result.unwrap();
 
             if is_url(&clipboard_text) {
-                println!("clipboard content is a url")
+                let payload = json!({
+                    "payload": clipboard_text,
+                    "type": "l",
+                });
+
+                let response = client
+                    .post(API_ENDPOINT.to_owned() + "/create")
+                    .body(payload.to_string())
+                    .send()
+                    .await;
+
+                match response {
+                    Ok(_) => {
+                        show_notification(app, "Clipboard", "Clipboard content has been processed")
+                    }
+                    Err(e) => println!("Failed to upload clipboard content: {:?}", e),
+                }
             } else if is_file_path(&clipboard_text) {
                 println!("clipboard content is a file path")
             } else if clipboard_text.len() > 0 {
-                println!("clipboard content is text")
+                let payload = json!({
+                    "payload": clipboard_text,
+                    "type": "t",
+                });
+
+                let response = client
+                    .post(API_ENDPOINT.to_owned() + "/create")
+                    .body(payload.to_string())
+                    .send()
+                    .await;
+
+                match response {
+                    Ok(_) => {
+                        show_notification(app, "Clipboard", "Clipboard content has been processed")
+                    }
+                    Err(e) => println!("Failed to upload clipboard content: {:?}", e),
+                }
             } else {
                 println!("clipboard is empty")
             }
@@ -108,8 +170,6 @@ async fn handle_clipboard(app: &AppHandle) {
             println!("clipboard text: {:?}", clipboard_text);
         }
     }
-
-    show_notification(app, "Clipboard", "Clipboard content has been processed");
 }
 
 fn is_url(content: &str) -> bool {
