@@ -4,7 +4,7 @@
 use arboard::Clipboard;
 use std::path::Path;
 use tauri::api::notification::Notification;
-use tauri::{ActivationPolicy, AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+use tauri::{ActivationPolicy, AppHandle, CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 use tauri::{GlobalShortcutManager, WindowEvent};
 use tauri::async_runtime::{self};
 use url::Url;
@@ -49,7 +49,7 @@ fn main() {
             Ok(())
         })
         .system_tray(system_tray)
-        .on_system_tray_event(|_app, event| match event {
+        .on_system_tray_event(|app, event| match event {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "about" => {
                     // TODO: open browser to website
@@ -58,7 +58,11 @@ fn main() {
                     // TODO: check for updates
                 }
                 "settings" => {
-                    // TODO: open settings
+                    tauri::WindowBuilder::new(
+                        app,
+                        "settings",
+                        tauri::WindowUrl::App("index.html".into()),
+                    ).build().unwrap();
                 }
                 "quit" => {
                     std::process::exit(0);
