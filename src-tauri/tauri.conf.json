@@ -26,6 +26,10 @@
       },
       "globalShortcut": {
         "all": true
+      },
+      "fs": {
+        "readFile": true,
+        "writeFile": true
       }
     },
     "windows": [

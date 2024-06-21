@@ -1,8 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use arboard::Clipboard;
-use reqwest::Client;
+use arboard::{Clipboard, ImageData};
+use reqwest::{multipart, Client};
 use serde_json::json;
 use std::path::Path;
 use std::sync::Mutex;
@@ -118,8 +118,43 @@ async fn handle_clipboard(app: &AppHandle) {
     let clipboard_image_result = clipboard.get_image();
 
     if clipboard_image_result.is_ok() {
-        let _clipboard_image = clipboard_image_result.unwrap();
-        println!("clipboard content is an image");
+        let clipboard_image = clipboard_image_result.unwrap();
+
+        let image_bytes = match image_to_png_bytes(&clipboard_image) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                println!("Failed to convert image to PNG bytes: {:?}", e);
+                return;
+            }
+        };
+
+        let img_type = infer::get(&image_bytes);
+        let ext = match img_type {
+            Some(img_type) => ".".to_owned() + img_type.extension(),
+            None => {
+                println!("Failed to get image type");
+                return;
+            }
+        };
+
+        let form = multipart::Form::new()
+            .text("type", "i")
+            .text("ext", ext)
+            .part("file", multipart::Part::bytes(image_bytes).file_name("image"));
+
+        let response = client
+            .post(API_ENDPOINT.to_owned() + "/upload")
+            .multipart(form)
+            .send()
+            .await;
+
+        match response {
+            Ok(resp) => {
+                let text = resp.text().await.unwrap();
+                show_notification(app, "Clipboard", &text);
+            }
+            Err(e) => println!("Failed to upload clipboard content: {:?}", e),
+        }
     } else {
         let clipboard_text_result = clipboard.get_text();
         if clipboard_text_result.is_ok() {
@@ -138,13 +173,14 @@ async fn handle_clipboard(app: &AppHandle) {
                     .await;
 
                 match response {
-                    Ok(_) => {
-                        show_notification(app, "Clipboard", "Clipboard content has been processed")
+                    Ok(resp) => {
+                        let text = resp.text().await.unwrap();
+                        show_notification(app, "Clipboard", &text);
                     }
                     Err(e) => println!("Failed to upload clipboard content: {:?}", e),
                 }
             } else if is_file_path(&clipboard_text) {
-                println!("clipboard content is a file path")
+                // TODO: get files using fs and then apply the same logic as image
             } else if clipboard_text.len() > 0 {
                 let payload = json!({
                     "payload": clipboard_text,
@@ -158,8 +194,9 @@ async fn handle_clipboard(app: &AppHandle) {
                     .await;
 
                 match response {
-                    Ok(_) => {
-                        show_notification(app, "Clipboard", "Clipboard content has been processed")
+                    Ok(resp) => {
+                        let text = resp.text().await.unwrap();
+                        show_notification(app, "Clipboard", &text);
                     }
                     Err(e) => println!("Failed to upload clipboard content: {:?}", e),
                 }
@@ -187,3 +224,20 @@ fn show_notification(app: &AppHandle, title: &str, message: &str) {
         .show()
         .unwrap();
 }
+
+fn image_to_png_bytes(image: &ImageData) -> Result<Vec<u8>, png::EncodingError> {
+    let width = image.width as u32;
+    let height = image.height as u32;
+    let buffer = &image.bytes;
+
+    let mut cursor = std::io::Cursor::new(Vec::new());
+    {
+        let mut encoder = png::Encoder::new(&mut cursor, width, height);
+        encoder.set_color(png::ColorType::Rgba);
+        let mut writer = encoder.write_header()?;
+        writer.write_image_data(&buffer)?;
+    }
+
+    Ok(cursor.into_inner())
+}
+
