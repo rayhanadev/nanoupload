@@ -32,7 +32,7 @@ fn set_upload_endpoint(state: State<'_, AppState>, endpoint: String) {
     *state.upload_endpoint.lock().unwrap() = endpoint;
 }
 
-const API_ENDPOINT: &str = "http://localhost:60941";
+const API_ENDPOINT: &str = "https://nano.rayhanadev.com";
 
 fn main() {
     let about = CustomMenuItem::new("about".to_string(), "About");
@@ -155,8 +155,16 @@ async fn handle_clipboard(app: &AppHandle) {
 
         match response {
             Ok(resp) => {
-                let text = resp.text().await.unwrap();
-                show_notification(app, "Clipboard", &text);
+                let response_text = resp.text().await.unwrap();
+                let json_response: serde_json::Value =
+                    serde_json::from_str(&response_text).unwrap();
+                let url = API_ENDPOINT.to_owned() + json_response["url"].as_str().unwrap();
+                show_notification(
+                    app,
+                    "NanoUpload",
+                    "Image uploaded successfully, the link has been copied to your clipboard.",
+                );
+                clipboard.set_text(url).unwrap();
             }
             Err(e) => println!("Failed to upload clipboard content: {:?}", e),
         }
@@ -179,8 +187,12 @@ async fn handle_clipboard(app: &AppHandle) {
 
                 match response {
                     Ok(resp) => {
-                        let text = resp.text().await.unwrap();
-                        show_notification(app, "Clipboard", &text);
+                        let response_text = resp.text().await.unwrap();
+                        let json_response: serde_json::Value =
+                            serde_json::from_str(&response_text).unwrap();
+                        let url = API_ENDPOINT.to_owned() + json_response["url"].as_str().unwrap();
+                        show_notification(app, "NanoUpload", "Shortlink created successfully, the link has been copied to your clipboard.");
+                        clipboard.set_text(url).unwrap();
                     }
                     Err(e) => println!("Failed to upload clipboard content: {:?}", e),
                 }
@@ -199,8 +211,13 @@ async fn handle_clipboard(app: &AppHandle) {
 
                     match response {
                         Ok(resp) => {
-                            let text = resp.text().await.unwrap();
-                            show_notification(app, "Clipboard", &text);
+                            let response_text = resp.text().await.unwrap();
+                            let json_response: serde_json::Value =
+                                serde_json::from_str(&response_text).unwrap();
+                            let url =
+                                API_ENDPOINT.to_owned() + json_response["url"].as_str().unwrap();
+                            show_notification(app, "NanoUpload", "File uploaded successfully, the link has been copied to your clipboard.");
+                            clipboard.set_text(url).unwrap();
                         }
                         Err(e) => println!("Failed to upload file: {:?}", e),
                     }
@@ -219,8 +236,12 @@ async fn handle_clipboard(app: &AppHandle) {
 
                 match response {
                     Ok(resp) => {
-                        let text = resp.text().await.unwrap();
-                        show_notification(app, "Clipboard", &text);
+                        let response_text = resp.text().await.unwrap();
+                        let json_response: serde_json::Value =
+                            serde_json::from_str(&response_text).unwrap();
+                        let url = API_ENDPOINT.to_owned() + json_response["url"].as_str().unwrap();
+                        show_notification(app, "NanoUpload", "Text uploaded successfully, the link has been copied to your clipboard.");
+                        clipboard.set_text(url).unwrap();
                     }
                     Err(e) => println!("Failed to upload clipboard content: {:?}", e),
                 }
