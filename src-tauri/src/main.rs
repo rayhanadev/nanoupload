@@ -4,7 +4,7 @@
 use arboard::Clipboard;
 use std::path::Path;
 use tauri::api::notification::Notification;
-use tauri::{AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
+use tauri::{ActivationPolicy, AppHandle, CustomMenuItem, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 use tauri::{GlobalShortcutManager, WindowEvent};
 use tauri::async_runtime::{self};
 use url::Url;
@@ -26,6 +26,9 @@ fn main() {
 
     tauri::Builder::default()
         .setup(|app| {
+            #[cfg(target_os = "macos")]
+            app.set_activation_policy(ActivationPolicy::Accessory);
+
             let (tx, mut rx) = async_runtime::channel::<()>(1);
             
             let handle = app.handle().clone();
