@@ -4,6 +4,8 @@
 use arboard::{Clipboard, ImageData};
 use reqwest::{multipart, Client};
 use serde_json::json;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::sync::Mutex;
 use tauri::api::notification::Notification;
@@ -140,7 +142,10 @@ async fn handle_clipboard(app: &AppHandle) {
         let form = multipart::Form::new()
             .text("type", "i")
             .text("ext", ext)
-            .part("file", multipart::Part::bytes(image_bytes).file_name("image"));
+            .part(
+                "file",
+                multipart::Part::bytes(image_bytes).file_name("image"),
+            );
 
         let response = client
             .post(API_ENDPOINT.to_owned() + "/upload")
@@ -180,7 +185,26 @@ async fn handle_clipboard(app: &AppHandle) {
                     Err(e) => println!("Failed to upload clipboard content: {:?}", e),
                 }
             } else if is_file_path(&clipboard_text) {
-                // TODO: get files using fs and then apply the same logic as image
+                if let Ok((file_bytes, ext)) = read_file(&clipboard_text) {
+                    let form = multipart::Form::new()
+                        .text("type", "f")
+                        .text("ext", ext)
+                        .part("file", multipart::Part::bytes(file_bytes).file_name("file"));
+
+                    let response = client
+                        .post(API_ENDPOINT.to_owned() + "/upload")
+                        .multipart(form)
+                        .send()
+                        .await;
+
+                    match response {
+                        Ok(resp) => {
+                            let text = resp.text().await.unwrap();
+                            show_notification(app, "Clipboard", &text);
+                        }
+                        Err(e) => println!("Failed to upload file: {:?}", e),
+                    }
+                }
             } else if clipboard_text.len() > 0 {
                 let payload = json!({
                     "payload": clipboard_text,
@@ -207,6 +231,18 @@ async fn handle_clipboard(app: &AppHandle) {
             println!("clipboard text: {:?}", clipboard_text);
         }
     }
+}
+
+fn read_file(file_path: &str) -> Result<(Vec<u8>, String), std::io::Error> {
+    let mut file = File::open(file_path)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    let ext = Path::new(file_path)
+        .extension()
+        .and_then(std::ffi::OsStr::to_str)
+        .unwrap_or("txt")
+        .to_string();
+    Ok((buffer, ext))
 }
 
 fn is_url(content: &str) -> bool {
@@ -240,4 +276,3 @@ fn image_to_png_bytes(image: &ImageData) -> Result<Vec<u8>, png::EncodingError> 
 
     Ok(cursor.into_inner())
 }
-
