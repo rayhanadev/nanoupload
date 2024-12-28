@@ -1,7 +1,9 @@
-# Tauri + React + Typescript
+# NanoUpload
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+NanoUpload is a simple text/link/image/file sharing service. It works by uploading the contents of your clipboard to a
+self-hosted server, and then providing you with a link to share with others. It's a great way to quickly share text,
+links, images, and files with others without having to go through the hassle of creating an account or signing up for a
+service.
 
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+This was inspired by the versatility of ShareX, but I wanted to build something cross-platform and lightweight, and this
+happened to be the most ergonomic solution for me.
